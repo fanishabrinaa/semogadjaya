@@ -21,7 +21,7 @@ class ContactController extends Controller
         $message = $request->message;
 
         // Nomor WA tujuan (tanpa + dan spasi)
-        $waNumber = '6282135443492';
+        $waNumber = '6281234567890';
 
         // Format pesan WA
         $waText =

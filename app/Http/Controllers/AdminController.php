@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Product;
@@ -6,11 +7,14 @@ use App\Models\Category;
 use App\Models\Order;
 use App\Models\Testimonial;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Bus;
-
 
 class AdminController extends Controller
 {
+    // Koordinat toko & radius maksimal pengantaran (harus sama dengan di JavaScript)
+    private const STORE_LAT       = -6.5199;
+    private const STORE_LNG       = 110.7662;
+    private const MAX_DELIVERY_KM = 5;
+
     /* ── DASHBOARD ── */
     public function index()
     {
@@ -38,12 +42,12 @@ class AdminController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'          => 'required',
-            'category_id'   => 'required',
-            'description'   => 'required',
-            'price_regular' => 'required|numeric',
-            'price_large'   => 'required|numeric',
-            'image'         => 'required|image',
+            'name'          => 'required|string|max:100',
+            'category_id'   => 'required|exists:categories,id',
+            'description'   => 'required|string',
+            'price_regular' => 'required|numeric|min:0',
+            'price_large'   => 'required|numeric|min:0',
+            'image'         => 'required|image|max:2048',
         ]);
 
         $imageName = time() . '.' . $request->image->extension();
@@ -67,12 +71,12 @@ class AdminController extends Controller
         $product = Product::findOrFail($id);
 
         $request->validate([
-            'name'          => 'required',
-            'category_id'   => 'required',
-            'description'   => 'required',
-            'price_regular' => 'required|numeric',
-            'price_large'   => 'required|numeric',
-            'image'         => 'nullable|image',
+            'name'          => 'required|string|max:100',
+            'category_id'   => 'required|exists:categories,id',
+            'description'   => 'required|string',
+            'price_regular' => 'required|numeric|min:0',
+            'price_large'   => 'required|numeric|min:0',
+            'image'         => 'nullable|image|max:2048',
         ]);
 
         if ($request->hasFile('image')) {
@@ -93,13 +97,7 @@ class AdminController extends Controller
 
         return redirect('/admin')->with('success', 'Produk berhasil diupdate!');
     }
-public function selesai($id)
-{
-    $order = Order::findOrFail($id);
-    $order->update(['status' => 'diterima']);
 
-    return back()->with('success', 'Pesanan ditandai selesai.');
-}
     /* ── PRODUK: DELETE ── */
     public function destroy($id)
     {
@@ -110,92 +108,154 @@ public function selesai($id)
 
         return redirect('/admin')->with('success', 'Produk berhasil dihapus!');
     }
+
     /* ── HALAMAN PRODUK ── */
-public function products()
-{
-    $products   = Product::with('category')->get();
-    $categories = Category::all();
-    return view('admin.products', compact('products', 'categories'));
-}
+    public function products()
+    {
+        $products   = Product::with('category')->get();
+        $categories = Category::all();
+        return view('admin.products', compact('products', 'categories'));
+    }
 
-/* ── HALAMAN TESTIMONI ── */
-public function testimonials()
-{
-    $testimonials = \App\Models\Testimonial::all();
-    return view('admin.testimonials', compact('testimonials'));
-}
-    /* ── ORDER: SIMPAN MANUAL ── */
+    /* ── HALAMAN TESTIMONI ── */
+    public function testimonials()
+    {
+        $testimonials = Testimonial::all();
+        return view('admin.testimonials', compact('testimonials'));
+    }
+
+    /* ── ORDER: SIMPAN MANUAL (diinput admin) ── */
     public function storeOrder(Request $request)
-{
-    $request->validate([
-        'customer_name' => 'required',
-        'items'         => 'required',
-        'total'         => 'required|numeric',
-        'delivery'      => 'required',
-    ]);
+    {
+        $request->validate([
+            'customer_name' => 'required|string|max:100',
+            'items'         => 'required',
+            'total'         => 'required|numeric|min:0',
+            'delivery'      => 'required',
+        ]);
 
-    Order::create([
-        'customer_name' => $request->customer_name,
-        'whatsapp'      => $request->whatsapp,  // ← tambah ini
-        'items'         => $request->items,
-        'total'         => $request->total,
-        'delivery'      => $request->delivery,
-        'address'       => $request->address,
-        'status'        => 'pending',
-        'notes'         => $request->notes,
-    ]);
+        Order::create([
+            'customer_name' => $request->customer_name,
+            'whatsapp'      => $request->whatsapp,
+            'items'         => $request->items,
+            'total'         => $request->total,
+            'delivery'      => $request->delivery,
+            'address'       => $request->address,
+            'status'        => 'pending',
+            'notes'         => $request->notes,
+        ]);
 
-    return redirect('/admin')->with('success', 'Order berhasil dicatat!');
-}
+        return redirect('/admin')->with('success', 'Order berhasil dicatat!');
+    }
 
-    /* ── ORDER: SIMPAN DARI WEBSITE (AJAX) ── */
+    /* ── ORDER: SIMPAN DARI WEBSITE (AJAX, publik) ──
+       Browser HANYA mengirim id produk, ukuran, dan jumlah.
+       Harga & total dihitung di server dari database, jadi tidak bisa dimanipulasi. */
     public function storeFromWebsite(Request $request)
     {
-        try {
-            $items = $request->items;
+        $data = $request->validate([
+            'customer_name' => 'required|string|max:100',
+            'delivery'      => 'required|in:antar,jemput',
+            'address'       => 'nullable|string|max:500',
+            'latitude'      => 'nullable|numeric|between:-90,90',
+            'longitude'     => 'nullable|numeric|between:-180,180',
+            'items'         => 'required|array|min:1|max:30',
+            'items.*.id'    => 'required|integer|exists:products,id',
+            'items.*.size'  => 'required|in:Regular,Large',
+            'items.*.qty'   => 'required|integer|min:1|max:50',
+        ]);
 
-            if (is_array($items)) {
-                $items = collect($items)->map(function ($item, $i) {
-                    $subtotal = ($item['price'] ?? 0) * ($item['qty'] ?? 1);
-                    return ($i + 1) . '. ' . ($item['product_name'] ?? $item['name'] ?? '') .
-                        ' - ' . ($item['size'] ?? '') .
-                        ' x' . ($item['qty'] ?? 1) .
-                        ' - Rp ' . number_format($subtotal, 0, ',', '.');
-                })->implode("\n");
+        // Validasi lokasi antar di server (bukan hanya di JavaScript)
+        if ($data['delivery'] === 'antar') {
+            if (empty($data['address']) || !isset($data['latitude'], $data['longitude'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lokasi pengiriman belum dipilih.',
+                ], 422);
             }
 
-            $total    = $request->total ?? $request->total_price ?? 0;
-            $delivery = $request->delivery ?? $request->delivery_type ?? 'antar';
+            $jarak = $this->distanceKm(
+                self::STORE_LAT, self::STORE_LNG,
+                (float) $data['latitude'], (float) $data['longitude']
+            );
 
-            Order::create([
-    'customer_name' => $request->customer_name,
-    'whatsapp'      => $request->customer_phone ?? null,
-    'items'         => $items,
-    'total'         => $total,
-    'delivery'      => $delivery,
-    'address'       => $request->address ?? '',
-    'status'        => 'pending',
-    'notes'         => 'Order dari website',
-]);
-
-            return response()->json(['success' => true]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
+            if ($jarak > self::MAX_DELIVERY_KM) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lokasi di luar area pengiriman (maks ' . self::MAX_DELIVERY_KM . ' km).',
+                ], 422);
+            }
         }
+
+        // Hitung harga dari database
+        $products = Product::whereIn('id', collect($data['items'])->pluck('id')->unique())
+            ->get()
+            ->keyBy('id');
+
+        $total   = 0;
+        $lines   = [];
+        $summary = [];
+
+        foreach (array_values($data['items']) as $i => $row) {
+            $product  = $products[$row['id']];
+            $price    = $row['size'] === 'Large' ? $product->price_large : $product->price_regular;
+            $subtotal = $price * $row['qty'];
+            $total   += $subtotal;
+
+            $lines[] = ($i + 1) . '. ' . $product->name .
+                ' - ' . $row['size'] .
+                ' x' . $row['qty'] .
+                ' - Rp ' . number_format($subtotal, 0, ',', '.');
+
+            $summary[] = [
+                'name'     => $product->name,
+                'size'     => $row['size'],
+                'qty'      => (int) $row['qty'],
+                'subtotal' => (int) $subtotal,
+            ];
+        }
+
+        Order::create([
+            'customer_name' => $data['customer_name'],
+            'whatsapp'      => null,
+            'items'         => implode("\n", $lines),
+            'total'         => $total,
+            'delivery'      => $data['delivery'],
+            'address'       => $data['delivery'] === 'antar' ? $data['address'] : 'Jemput ke Store',
+            'status'        => 'pending',
+            'notes'         => 'Order dari website',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'total'   => (int) $total,
+            'items'   => $summary,
+        ]);
     }
 
     /* ── ORDER: UPDATE STATUS ── */
     public function updateOrderStatus(Request $request, $id)
     {
+        // Sesuaikan daftar ini dengan status yang dipakai di dashboard kamu,
+        // mis. 'in:pending,diterima,ditolak'
+        $request->validate([
+            'status' => 'required|string|max:20',
+        ]);
+
         $order         = Order::findOrFail($id);
         $order->status = $request->status;
         $order->save();
 
         return redirect('/admin')->with('success', 'Status order diperbarui!');
+    }
+
+    /* ── ORDER: TANDAI SELESAI ── (belum ada route-nya di web.php) */
+    public function selesai($id)
+    {
+        $order = Order::findOrFail($id);
+        $order->update(['status' => 'diterima']);
+
+        return back()->with('success', 'Pesanan ditandai selesai.');
     }
 
     /* ── ORDER: DELETE ── */
@@ -253,5 +313,18 @@ public function testimonials()
     {
         Testimonial::findOrFail($id)->delete();
         return redirect('/admin')->with('success', 'Testimoni berhasil dihapus!');
+    }
+
+    /* ── Hitung jarak dua koordinat (rumus haversine), hasil dalam km ── */
+    private function distanceKm(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $r    = 6371;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+
+        $a = sin($dLat / 2) ** 2
+           + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+
+        return 2 * $r * asin(min(1, sqrt($a)));
     }
 }
