@@ -209,10 +209,9 @@
   .feature-icon-wrap svg { width: 28px; height: 28px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .feature-card h3 { font-size: 20px; font-weight: 700; color: var(--green-dark); margin-bottom: 12px; }
   .feature-card p { color: var(--text-muted); line-height: 1.8; font-size: 14px; }
-  .feature-scroll { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x proximity; scrollbar-width: none; -ms-overflow-style: none; }
-  .feature-scroll::-webkit-scrollbar { display: none; }
-  .feature-scroll > .col-md-4 { flex: 0 0 100%; max-width: 100%; scroll-snap-align: start; }
-
+.feature-scroll { display: flex; flex-wrap: nowrap; gap: 16px; overflow-x: auto; margin-left: 0; margin-right: 0; margin-top: 0; padding: 8px 0 12px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
+.feature-scroll::-webkit-scrollbar { display: none; }
+.feature-scroll > .col-md-4 { flex: 0 0 calc((100% - 32px) / 3); max-width: none; width: auto; padding: 0; margin-top: 0; scroll-snap-align: start; }
   .about-cta-block { background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%); border-radius: var(--radius-lg); padding: 72px 64px; display: flex; align-items: center; justify-content: space-between; gap: 40px; position: relative; overflow: hidden; margin-top: 16px; }
   .about-cta-left { flex: 1; position: relative; z-index: 1; }
   .about-cta-eyebrow { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 500; margin-bottom: 16px; display: block; }
@@ -235,9 +234,7 @@
     .hero-divider { display: none; }
     .section-title { font-size: 40px; }
     .about-intro { font-size: 16px; }
-    .feature-scroll { display: flex; overflow-x: auto; }
-    .feature-scroll > .col-md-4 { flex: 0 0 82%; max-width: 82%; }
-  }
+    .feature-scroll > .col-md-4 { flex: 0 0 82%; }  }
   @media(max-width:500px) { .about-cta-stats { flex-direction: column; } .about-cta-stat-divider { display: none; } .hero { padding-top: 150px; } .hero h1 { font-size: 46px; letter-spacing: -1px; } .hero-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; margin-top: 36px; } .hero-stat .num { font-size: 24px; } .hero-stat .lbl { letter-spacing: 1px; } .section-title { font-size: 32px; } .feature-card, .testi-card { padding: 24px 18px; } .card-product img { height: 220px; } .menu-banner { margin-top: 50px; } .btn-goto-order, .btn-add-cart, .btn-order-now, .btn-cta-white, .btn-cta-ghost, .btn-about-learn { width: 100%; justify-content: center; } .btn-cta-white, .btn-cta-ghost { width: 100%; } .cta-section .d-flex { display: grid !important; gap: 12px; } .sdj-container { padding: 0 18px; } .sdj-grid { grid-template-columns: 1fr; } }
 
   /* ===== MENU ===== */

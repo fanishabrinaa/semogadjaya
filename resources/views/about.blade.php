@@ -234,10 +234,16 @@
   .feature-card:hover .feature-icon-wrap { background: var(--green-dark); color: white; }
   .feature-card h3 { font-size: 20px; font-weight: 700; color: var(--green-dark); margin-bottom: 12px; }
   .feature-card p { color: var(--text-muted); line-height: 1.8; font-size: 14px; }
-  .feature-scroll { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x proximity; scrollbar-width: none; -ms-overflow-style: none; }
-  .feature-scroll::-webkit-scrollbar { display: none; }
-  .feature-scroll > .col-md-4 { flex: 0 0 100%; max-width: 100%; scroll-snap-align: start; }
+ .feature-scroll { display: flex; flex-wrap: nowrap; gap: 16px; overflow-x: auto; margin-left: 0; margin-right: 0; margin-top: 0; padding: 8px 0 12px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; }
+.feature-scroll::-webkit-scrollbar { display: none; }
+.feature-scroll > .col-md-4 { flex: 0 0 calc((100% - 32px) / 3); max-width: none; width: auto; padding: 0; margin-top: 0; scroll-snap-align: start; }
 
+@media (min-width: 769px) {
+  .feature-scroll { scrollbar-width: thin; scrollbar-color: var(--green-border) transparent; cursor: grab; }
+  .feature-scroll::-webkit-scrollbar { display: block; height: 6px; }
+  .feature-scroll::-webkit-scrollbar-thumb { background: var(--green-border); border-radius: 6px; }
+  .feature-scroll.dragging { cursor: grabbing; scroll-snap-type: none; user-select: none; }
+}
   
   .story-split {
     display: grid;
@@ -276,7 +282,7 @@
   .story-block ul { color: var(--text-muted); line-height: 2.4; font-size: 15px; }
   .story-block hr { border-color: var(--green-light); margin: 48px 0; }
 
-  @media(max-width:768px) { .story-block { padding: 36px 24px; } .feature-scroll > .col-md-4 { flex: 0 0 82%; max-width: 82%; } }
+  @media(max-width:768px) { .story-block { padding: 36px 24px; } .feature-scroll > .col-md-4 { flex: 0 0 82%; } }
 
   
   .timeline { position: relative; padding-left: 32px; margin-top: 8px; }
@@ -469,19 +475,6 @@
           </div>
           <h3>Suasana Bersahabat</h3>
           <p>Memberikan pelayanan hangat agar setiap pengunjung merasa seperti di rumah sendiri.</p>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="feature-card">
-          <div class="feature-icon-wrap">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 9.5V7.8A5 5 0 0 1 12 3a5 5 0 0 1 5 4.8v1.7"></path>
-              <rect x="4.5" y="9.5" width="15" height="10" rx="2"></rect>
-              <path d="M12 13v3.5"></path>
-            </svg>
-          </div>
-          <h3>Free Wi-Fi</h3>
-          <p>Koneksi internet cepat tersedia untuk kamu yang mau kerja, belajar, atau streaming sambil ngopi.</p>
         </div>
       </div>
       <div class="col-md-4">
@@ -741,12 +734,6 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-function toggleNavMenu() {
-  const navWrapper = document.getElementById('navWrapper');
-  if (!navWrapper) return;
-  navWrapper.classList.toggle('nav-open');
-}
-
 document.addEventListener('click', function (event) {
   const navWrapper = document.getElementById('navWrapper');
   const toggleButton = document.querySelector('.nav-toggle');
@@ -757,8 +744,24 @@ document.addEventListener('click', function (event) {
     navWrapper.classList.remove('nav-open');
   }
 });
-</script>
 
+function toggleNavMenu() {
+  const navWrapper = document.getElementById('navWrapper');
+  if (!navWrapper) return;
+  navWrapper.classList.toggle('nav-open');
+}
+
+document.querySelectorAll('.feature-scroll').forEach(el => {
+  let down = false, startX = 0, startLeft = 0;
+  el.addEventListener('mousedown', e => { down = true; startX = e.pageX; startLeft = el.scrollLeft; });
+  window.addEventListener('mouseup', () => { down = false; el.classList.remove('dragging'); });
+  window.addEventListener('mousemove', e => {
+    if (!down) return;
+    const dx = e.pageX - startX;
+    if (Math.abs(dx) > 5) el.classList.add('dragging');
+    el.scrollLeft = startLeft - dx;
+  });
+});
+</script>
 </body>
 </html>
-
