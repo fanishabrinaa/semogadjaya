@@ -13,9 +13,9 @@ class ProductController extends Controller
     $testimonials = \App\Models\Testimonial::where('is_active', true)->latest()->take(3)->get();
     return view('home', compact('products', 'testimonials')); // sesuaikan nama view-nya
 }
-    public function indexOrder()
+public function indexOrder()
 {
-    $products = \App\Models\Product::all();
+    $products = \App\Models\Product::with('category')->get();
 
     return view('order', compact('products'));
 }

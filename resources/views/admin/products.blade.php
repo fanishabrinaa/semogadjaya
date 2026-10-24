@@ -92,7 +92,7 @@
             <div style="font-weight:600">{{ $product->name }}</div>
             <div style="font-size:12px; color:#888">{{ Str::limit($product->description, 40) }}</div>
           </td>
-          <td style="font-size:13px">{{ $product->category->name ?? '-' }}</td>
+          <td style="font-size:13px">{{ $product->getRelation('category')?->name ?? '-' }}</td>
           <td style="font-weight:600; color:#0f5132">Rp {{ number_format($product->price_regular, 0, ',', '.') }}</td>
           <td style="font-weight:600; color:#0f5132">Rp {{ number_format($product->price_large, 0, ',', '.') }}</td>
           <td>

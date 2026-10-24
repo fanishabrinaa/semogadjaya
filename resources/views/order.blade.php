@@ -418,7 +418,7 @@
       @foreach($products as $product)
       <div
         class="col-md-4 mb-4 product-col"
-        data-category="{{ strtolower($product->category->name ?? $product->category) }}"
+        data-category="{{ strtolower($product->getRelation('category')?->name ?? '') }}"
         data-name="{{ strtolower($product->name) }}"
         data-desc="{{ strtolower($product->description) }}"
       >
